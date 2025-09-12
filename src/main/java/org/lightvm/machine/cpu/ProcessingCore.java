@@ -1,23 +1,22 @@
-package org.lightvm.cpu;
-import org.lightvm.storage.RandomAccessMemory;
+package org.lightvm.machine.cpu;
+import org.lightvm.machine.busing.Busing;
 
-public class CentralProcessingUnit extends Thread {
+public class ProcessingCore extends Thread {
     private int accumulator;
     private short instructionAddress;
     private byte instruction;
     private int[] registerBank;
     private Cache cache;
-    private RandomAccessMemory memory;
     private int clockSpeedHertz;
     private boolean ticking = false;
     private long timePassed = 0L;
     private long tickCount = 0L;
+    private final Busing bus;
 
 
-
-    public CentralProcessingUnit(RandomAccessMemory memory, int num64ByteCacheLines, int registerBankSize, int clockSpeedHertz) {
-        this.memory = memory;
-        cache = new Cache(num64ByteCacheLines);
+    public ProcessingCore(int num64ByteCacheLines, int registerBankSize, int clockSpeedHertz, Busing bus) {
+        this.bus = bus;
+        cache = new Cache(num64ByteCacheLines, bus);
         registerBank = new int[registerBankSize];
         this.clockSpeedHertz = clockSpeedHertz;
     }
@@ -25,21 +24,6 @@ public class CentralProcessingUnit extends Thread {
     public void clockCPU() {
         ticking = true;
         this.start();
-    }
-
-    private byte load(short address) {
-//        byte[][] cacheLines = cache.getCacheLines();
-//        int targetAddress = Short.toUnsignedInt(address);
-//        for(int i = 0; i < cacheLines.length; i++) {
-//            int cacheDiff = targetAddress - (Byte.toUnsignedInt(cacheLines[i][64]) * 64);
-//
-//            if(cacheDiff >= 0 && cacheDiff < 64) {
-//                return cacheLines[i][cacheDiff];
-//            }
-//        }
-//
-//        cache.loadLine()
-        return (byte) 10;
     }
 
     @Override
