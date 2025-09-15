@@ -32,7 +32,7 @@ public class Busing {
     }
 
     public int getIntFromMemory(int address) {
-        return ram.
+        return ram.getIntAtAddress(address);
     }
 
     public void transferDiskToMemory(int sourceDiskAddress, int destMemoryAddress, int numBytesToTransfer) {

@@ -2,9 +2,18 @@ package org.lightvm.utility;
 
 public class BinaryUtility {
     public static byte[] getBytesFromShort(Short twoByteNumber) {
-        byte mostSignificantByte = (byte) (twoByteNumber >>> 8);
-        byte leastSignificantByte = (byte) (twoByteNumber - (mostSignificantByte << 8));
+        byte mostSignificantByte = (byte) ((twoByteNumber >>> 8) & 0xFF);
+        byte leastSignificantByte = (byte) (twoByteNumber & 0xFF);
         return new byte[] {mostSignificantByte, leastSignificantByte};
+    }
+
+    public static byte[] getBytesFromInt(int integer) {
+        return new byte[] {
+                (byte) (integer >>> 24),
+                (byte) (integer >>> 16),
+                (byte) (integer >>> 8),
+                (byte) integer
+        };
     }
 
     public static int getIntFromBytes(byte[] numberToConvert) {

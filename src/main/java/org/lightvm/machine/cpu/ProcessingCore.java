@@ -44,19 +44,22 @@ public class ProcessingCore extends Thread {
     }
 
     private void executeInstruction(byte[] threeByteInstruction) {
-        int opcode =  (threeByteInstruction[0] & 0xFF) >>> 3;
-        int opMetadata = threeByteInstruction[0] & 0x07;
+        int opcode =  (threeByteInstruction[0] & 0xFF) >>> 3; // first 5 bits of first byte
+        int opMetadata = threeByteInstruction[0] & 0x07; // last 3 bits of first byte
+
+        // Next two bytes
         int address = BinaryUtility.getIntFromBytes(new byte[] {threeByteInstruction[1], threeByteInstruction[2]});
+
         // Used a switch statement with sequential integers as this has o(1) lookup speed.
         switch(opcode) {
             case 0: storeRelative(opMetadata, address); break; // Store Relative Opcode: 0, 00000
             case 1: storeAbsolute(opMetadata, address); break; // Store Absolute Opcode: 1, 00001
             case 2: loadRelative(opMetadata, address); break; // Load Relative: 2, 00010
-            case 3: break;
-            case 4: break;
-            case 5: break;
-            case 6: break;
-            case 7: break;
+            case 3: loadAbsolute(opMetadata, address); break; // Load Absolute: 3, 00011
+            case 4: add(opMetadata, threeByteInstruction); break; // Add: 4, 00100
+            case 5: subtract(opMetadata, threeByteInstruction); break; // Subtract: 5, 00101
+            case 6: multiply(opMetadata, threeByteInstruction); break; // Multiply: 6, 00110
+            case 7: divide(opMetadata, threeByteInstruction); break; // Divide: 7, 00111
             case 8: break;
             case 9: break;
             case 10: break;
@@ -92,17 +95,33 @@ public class ProcessingCore extends Thread {
         );
         cache.setIntAtAddress(absoluteAddress, toStore);
     }
-
     private void storeRelative(int metadata, int relativeAddress) {
         storeAbsolute(metadata, programRootAddress + relativeAddress);
     }
-
-    private void loadAbsolute(int metadata, int relativeAddress) {
-
+    private void loadAbsolute(int metadata, int absoluteAddress) {
+        registerBank[metadata] = cache.getIntAtAddress(absoluteAddress);
     }
-
     private void loadRelative(int metadata, int relativeAddress) {
-
+        loadAbsolute(metadata, programRootAddress + relativeAddress);
     }
-
+    private void add(int metadata, byte[] fullInstruction) {
+        registerBank[metadata] =
+                registerBank[Byte.toUnsignedInt(fullInstruction[1])] +
+                registerBank[Byte.toUnsignedInt(fullInstruction[2])];
+    }
+    private void subtract(int metadata, byte[] fullInstruction) {
+        registerBank[metadata] =
+                registerBank[Byte.toUnsignedInt(fullInstruction[1])] -
+                        registerBank[Byte.toUnsignedInt(fullInstruction[2])];
+    }
+    private void multiply(int metadata, byte[] fullInstruction) {
+        registerBank[metadata] =
+                registerBank[Byte.toUnsignedInt(fullInstruction[1])] *
+                        registerBank[Byte.toUnsignedInt(fullInstruction[2])];
+    }
+    private void divide(int metadata, byte[] fullInstruction) {
+        registerBank[metadata] =
+                registerBank[Byte.toUnsignedInt(fullInstruction[1])] /
+                        registerBank[Byte.toUnsignedInt(fullInstruction[2])];
+    }
 }
