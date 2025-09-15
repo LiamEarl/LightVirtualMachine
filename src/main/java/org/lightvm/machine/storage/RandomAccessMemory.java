@@ -1,5 +1,6 @@
 package org.lightvm.machine.storage;
 import lombok.Getter;
+import org.lightvm.utility.BinaryUtility;
 
 public class RandomAccessMemory {
     @Getter
@@ -17,7 +18,25 @@ public class RandomAccessMemory {
         return result;
     }
 
+    public int getIntAtAddress(int targetAddress) {
+        if(targetAddress > memory.length - 4)
+            throw new IllegalArgumentException("targetAddress + 3 outside memory bounds at RAM getIntAtAddress");
+        return BinaryUtility.getIntFromBytes(new byte[] {
+                memory[targetAddress],
+                memory[targetAddress + 1],
+                memory[targetAddress + 2],
+                memory[targetAddress + 3]}
+        );
+    }
+
     public void setByte(int address, byte data) {
         memory[address] = data;
+    }
+
+    public void placeInt(int address, int integer) {
+        memory[address] = (byte) (integer >>> 24);
+        memory[address + 1] = (byte) (integer >>> 16);
+        memory[address + 2] = (byte) (integer >>> 8);
+        memory[address + 3] = (byte) (integer);
     }
 }

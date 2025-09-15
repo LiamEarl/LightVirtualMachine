@@ -9,14 +9,12 @@ import org.lightvm.machine.storage.SolidStateDrive;
 public class Busing {
     private final RandomAccessMemory ram;
     private final SolidStateDrive ssd;
-    private final Cache cache;
     private final Keyboard keyboard;
     private final Display display;
 
-    public Busing(RandomAccessMemory ram, SolidStateDrive ssd, Cache cache, Keyboard keyboard, Display display) {
+    public Busing(RandomAccessMemory ram, SolidStateDrive ssd, Keyboard keyboard, Display display) {
         this.ram = ram;
         this.ssd = ssd;
-        this.cache = cache;
         this.keyboard = keyboard;
         this.display = display;
     }
@@ -25,8 +23,16 @@ public class Busing {
         ram.setByte(address, byteToSet);
     }
 
-    public byte[] getBlockOfMemory(int address) {
+    public void setMemoryInteger(int address, int intToSet) {
+        ram.placeInt(address, intToSet);
+    }
+
+    public byte[] getMemoryBlock(int address) {
         return ram.getMemoryBlock(address);
+    }
+
+    public int getIntFromMemory(int address) {
+        return ram.
     }
 
     public void transferDiskToMemory(int sourceDiskAddress, int destMemoryAddress, int numBytesToTransfer) {
@@ -35,19 +41,17 @@ public class Busing {
         }
     }
 
-
-    static class Builder {
+    public static class Builder {
         private RandomAccessMemory ram;
         private SolidStateDrive ssd;
-        private Cache cache;
         private Keyboard keyboard;
         private Display display;
 
         public Busing build() {
-            if(ram == null || ssd == null || cache == null || keyboard == null || display == null)
+            if(ram == null || ssd == null || keyboard == null || display == null)
                 throw new IllegalArgumentException("All busing fields must be set before you call build().");
 
-            return new Busing(ram, ssd, cache, keyboard, display);
+            return new Busing(ram, ssd, keyboard, display);
         }
 
         public Builder setRAM(RandomAccessMemory ram) {
@@ -56,10 +60,6 @@ public class Busing {
         }
         public Builder setSSD(SolidStateDrive ssd) {
             this.ssd = ssd;
-            return this;
-        }
-        public Builder setCache(Cache cache) {
-            this.cache = cache;
             return this;
         }
         public Builder setKeyboard(Keyboard keyboard) {
