@@ -77,14 +77,13 @@ public class Cache {
         return lineOffset;
     }
 
-    public byte load(int addressToLoad) {
+    public byte getByteAtAddress(int addressToLoad) {
         int[] appropriateCacheLine = findCacheLine(addressToLoad);
 
         if(appropriateCacheLine[0] != -1)
             return cacheLines[appropriateCacheLine[0]][appropriateCacheLine[1]];
 
         //cache miss
-
         int lineOffset = fetchFromMemory(addressToLoad);
 
         // Return the data initially requested.
@@ -92,35 +91,47 @@ public class Cache {
     }
 
     public void setByteAtAddress(int addressToSet, byte value) {
-        for(int i = 0; i < cacheLines.length; i++) {
-            // Get the two bytes at the end of the cache line and convert them into a proper integer
-            int lineMemoryAddress = BinaryUtility.getIntFromBytes(
-                    new byte[] {cacheLines[lineAccessedOrder[i]][64], cacheLines[lineAccessedOrder[i]][65]}
-            );
-            // Find the difference between the root of the block and the address you're searching for
-            int cacheDiff = addressToSet - (lineMemoryAddress * 64);
+        int[] appropriateCacheLine = findCacheLine(addressToSet);
+        // Make sure memory is reflected in cache so set the byte there as well
+        Machine.getInstance().getBusing().setMemoryByte(addressToSet, value);
 
-            // If the difference is between 0 and 63 then you know that you are accessing the right cache line
-            if(cacheDiff >= 0 && cacheDiff < 64) {
-                //Update accessed order and set the value
-                updateAccessedOrder(lineAccessedOrder[i]);
-                cacheLines[lineAccessedOrder[i]][cacheDiff] = value;
-                return;
-            }
+        if(appropriateCacheLine[0] != -1) {
+            cacheLines[appropriateCacheLine[0]][appropriateCacheLine[1]] = value;
+            return;
         }
-        System.out.println("Address to set was not loaded in cache");
+
+        //cache miss
+        int lineOffset = fetchFromMemory(addressToSet);
+
+        // Set the byte
+        cacheLines[lineAccessedOrder[0]][lineOffset] = value;
     }
 
     public void setIntAtAddress(int addressToSet, int value) {
         int[] appropriateCacheLine = findCacheLine(addressToSet);
-
+        int lineOffset = appropriateCacheLine[1];
         if(appropriateCacheLine[0] != -1) {
-            if(appropriateCacheLine[1] > 60)
-                throw new IllegalArgumentException("Tried to set an integer between cache lines at setIntAtAddress");
-            cacheLines[appropriateCacheLine[0]][appropriateCacheLine[1]] = (byte) (value >>> 24);
-            cacheLines[appropriateCacheLine[0]][appropriateCacheLine[1] + 1] = (byte) (value >>> 16);
-            cacheLines[appropriateCacheLine[0]][appropriateCacheLine[1] + 2] = (byte) (value >>> 8);
-            cacheLines[appropriateCacheLine[0]][appropriateCacheLine[1] + 3] = (byte) (value);
+
+            if(appropriateCacheLine[1] > 60) {
+                int bytesBeyondCacheLine = 63 - appropriateCacheLine[1];
+                for(int i = 0; i < 4; i++) {
+                    byte currentByteOfInt = (byte) (value >>> ((3 - i) * 8));
+                    if(lineOffset + i <= 63) {
+                        // This byte is still within the cache line so write it to this line in cache
+                        cacheLines[appropriateCacheLine[0]][lineOffset + i] = currentByteOfInt;
+                        Machine.getInstance().getBusing().setMemoryByte(addressToSet + i, currentByteOfInt);
+                    }else {
+                        // This byte is no longer within the cache line so use our setByte method to handle it.
+                        setByteAtAddress(addressToSet + i, currentByteOfInt);
+                    }
+                }
+                return;
+            }
+            Machine.getInstance().getBusing().setMemoryInteger(addressToSet, value);
+            cacheLines[appropriateCacheLine[0]][lineOffset] = (byte) (value >>> 24);
+            cacheLines[appropriateCacheLine[0]][lineOffset + 1] = (byte) (value >>> 16);
+            cacheLines[appropriateCacheLine[0]][lineOffset + 2] = (byte) (value >>> 8);
+            cacheLines[appropriateCacheLine[0]][lineOffset + 3] = (byte) (value);
 
         }else System.out.println("Address to set was not loaded in cache. setIntAtAddress");
 

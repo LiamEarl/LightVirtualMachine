@@ -1,6 +1,5 @@
 package org.lightvm.machine.busing;
 
-import org.lightvm.machine.cpu.Cache;
 import org.lightvm.machine.io.Display;
 import org.lightvm.machine.io.Keyboard;
 import org.lightvm.machine.storage.RandomAccessMemory;
@@ -19,7 +18,7 @@ public class Busing {
         this.display = display;
     }
 
-    public void setMemory(int address, byte byteToSet) {
+    public void setMemoryByte(int address, byte byteToSet) {
         ram.setByte(address, byteToSet);
     }
 
