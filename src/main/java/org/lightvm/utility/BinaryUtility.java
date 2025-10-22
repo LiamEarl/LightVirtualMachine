@@ -17,7 +17,6 @@ public class BinaryUtility {
     }
 
     public static int getIntFromBytes(byte[] numberToConvert) {
-        if(numberToConvert.length != 4) throw new IllegalArgumentException("BinaryUtility.getIntFromBytes needs a 4 byte long array 'numberToConvert'");
         int total = 0;
         for(int i = 0; i < numberToConvert.length; i++) {
             // Add each byte's true value to the total by bit shifting an integer

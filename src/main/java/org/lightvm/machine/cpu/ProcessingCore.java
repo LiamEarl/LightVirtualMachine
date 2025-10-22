@@ -1,6 +1,5 @@
 package org.lightvm.machine.cpu;
 import org.lightvm.machine.Machine;
-import org.lightvm.machine.busing.Busing;
 import org.lightvm.utility.BinaryUtility;
 
 public class ProcessingCore extends Thread {
@@ -54,82 +53,95 @@ public class ProcessingCore extends Thread {
         }
     }
 
-    private void executeInstruction(int instructionAddress) {
-//        int opcode =  (fullInstruction[0] & 0xFF) >>> 3; // first 5 bits of first byte
-////        int opMetadata = fullInstruction[0] & 0x07; // last 3 bits of first byte
-////
-////        // Next two bytes
-////        int address = BinaryUtility.getIntFromBytes(new byte[] {fullInstruction[1], fullInstruction[2]});
-//
-//        // Used a switch statement with sequential integers as this has o(1) lookup speed.
-//        switch(opcode) {
-//            // Store Relative: 0, 00000
-//            // First five bits code
-//            // Next three bits is the register to take the number from
-//            // Next two bytes contains the offset from the program root address that the number will be stored in
-//            // Instruction Format: code(00000)r1(000)|relative address(00000000|00000000)
-//            case 0: storeRelative(opMetadata, address); break;
-//
-//            // Store Absolute: 1, 00001
-//            // First five bits code
-//            // Next three bits is the register to take the number from
-//            // Next two bytes contains the absolute address that the number will be stored in
-//            // Instruction Format: code(00000)r1(000)|address(00000000|00000000)
-//            case 1: storeAbsolute(opMetadata, address); break;
-//
-//            // Load Relative: 2, 00010
-//            // First five bits code
-//            // Next three bits is the register to load the number into
-//            // Next two bytes contains the relative address that the number will be taken from
-//            // Instruction Format: code(00000)r1(000)|address(00000000|00000000)
-//            case 2: loadRelative(opMetadata, address); break;
-//
-//            // Load Absolute: 3, 00011
-//            // First five bits code
-//            // Next three bits is the register to load the number into
-//            // Next two bytes contains the Absolute address that the number will be taken from
-//            // Instruction Format: code(00000)r1(000)|address(00000000|00000000)
-//            case 3: loadAbsolute(opMetadata, address); break;
-//
-//            // Add: 4, 00100
-//            // First 5 bits code
-//            // Next three bits is the register to store the value to
-//            // Next 3 bits is the register containing the first number to add
-//            // Next 3 bits is the register containing the second number to add
-//            // Next 2 bits is wasted
-//            // Instruction format: code(00000)r3(000)|r1(000)r2(000) Wasted bits:(00)
-//            case 4:
-//                //int firstNumber = registerBank[]
-//                //add(opMetadata, fullInstruction);
-//                break;
-////            case 5: subtract(opMetadata, fullInstruction); break; // Subtract: 5, 00101
-////            case 6: multiply(opMetadata, fullInstruction); break; // Multiply: 6, 00110
-////            case 7: divide(opMetadata, fullInstruction); break; // Divide: 7, 00111
-////            case 8: break;
-//            case 9: break;
-//            case 10: break;
-//            case 11: break;
-//            case 12: break;
-//            case 13: break;
-//            case 14: break;
-//            case 15: break;
-//            case 16: break;
-//            case 17: break;
-//            case 18: break;
-//            case 19: break;
-//            case 20: break;
-//            case 21: break;
-//            case 22: break;
-//            case 23: break;
-//            case 24: break;
-//            case 25: break;
-//            case 26: break;
-//            case 27: break;
-//            case 28: break;
-//            case 29: break;
-//            case 30: break;
-//            case 31: break;
-//        }
+    private int getAssistingAddress(int targetAddress) {
+        return BinaryUtility.getIntFromBytes(new byte[] {
+                cache.getByteAtAddress(targetAddress),
+                cache.getByteAtAddress(targetAddress + 1)
+        });
+    }
+
+    private void executeInstruction(int curInstructionAddress) {
+        byte instructionRoot = cache.getByteAtAddress(curInstructionAddress);
+
+        int opcode =  (instructionRoot & 0xFF) >>> 3; // first 5 bits of first byte
+        int opMetadata = instructionRoot & 0x07; // last 3 bits of first byte
+
+        // Next two bytes into an integer
+
+
+        // Used a switch statement with sequential integers as this has o(1) lookup speed.
+        switch(opcode) {
+            // Store Relative: 0, 00000
+            // First five bits code
+            // Next three bits is the register to take the number from
+            // Next two bytes contains the offset from the program root potentialAddress that the number will be stored in
+            // Instruction Format: code(00000)r1(000)|relative potentialAddress(00000000|00000000)
+            case 0:
+                storeRelative(opMetadata, getAssistingAddress(curInstructionAddress + 1));
+                break;
+
+            // Store Absolute: 1, 00001
+            // First five bits code
+            // Next three bits is the register to take the number from
+            // Next two bytes contains the absolute potentialAddress that the number will be stored in
+            // Instruction Format: code(00000)r1(000)|potentialAddress(00000000|00000000)
+            case 1: storeAbsolute(opMetadata, getAssistingAddress(curInstructionAddress + 1)); break;
+
+            // Load Relative: 2, 00010
+            // First five bits code
+            // Next three bits is the register to load the number into
+            // Next two bytes contains the relative potentialAddress that the number will be taken from
+            // Instruction Format: code(00000)r1(000)|potentialAddress(00000000|00000000)
+            case 2: loadRelative(opMetadata, getAssistingAddress(curInstructionAddress + 1)); break;
+
+            // Load Absolute: 3, 00011
+            // First five bits code
+            // Next three bits is the register to load the number into
+            // Next two bytes contains the Absolute potentialAddress that the number will be taken from
+            // Instruction Format: code(00000)r1(000)|potentialAddress(00000000|00000000)
+            case 3: loadAbsolute(opMetadata, getAssistingAddress(curInstructionAddress + 1)); break;
+
+            // Add: 4, 00100
+            // First 5 bits code
+            // Next three bits is the register to store the value to
+            // Next 3 bits is the register containing the first number to add
+            // Next 3 bits is the register containing the second number to add
+            // Next 2 bits is wasted
+            // Instruction format: code(00000)r3(000)|r1(000)r2(000) Wasted bits:(00)
+            case 4:
+                byte nextInstructionByte = cache.getByteAtAddress(curInstructionAddress + 1);
+                int firstRegisterIndex = nextInstructionByte >>> 5;
+                int secondRegisterIndex = (nextInstructionByte & 0b00011100) >>> 2;
+                add(opMetadata, firstRegisterIndex, secondRegisterIndex);
+                break;
+//            case 5: subtract(opMetadata, fullInstruction); break; // Subtract: 5, 00101
+//            case 6: multiply(opMetadata, fullInstruction); break; // Multiply: 6, 00110
+//            case 7: divide(opMetadata, fullInstruction); break; // Divide: 7, 00111
+//            case 8: break;
+            case 9: break;
+            case 10: break;
+            case 11: break;
+            case 12: break;
+            case 13: break;
+            case 14: break;
+            case 15: break;
+            case 16: break;
+            case 17: break;
+            case 18: break;
+            case 19: break;
+            case 20: break;
+            case 21: break;
+            case 22: break;
+            case 23: break;
+            case 24: break;
+            case 25: break;
+            case 26: break;
+            case 27: break;
+            case 28: break;
+            case 29: break;
+            case 30: break;
+            case 31: break;
+        }
     }
 
     private void storeAbsolute(int metadata, int absoluteAddress) {
@@ -149,10 +161,10 @@ public class ProcessingCore extends Thread {
     private void loadRelative(int metadata, int relativeAddress) {
         loadAbsolute(metadata, programRootAddress + relativeAddress);
     }
-    private void add(int metadata, byte[] fullInstruction) {
+    private void add(int metadata, int register1Index, int register2Index) {
         registerBank[metadata] =
-                registerBank[Byte.toUnsignedInt(fullInstruction[1])] +
-                registerBank[Byte.toUnsignedInt(fullInstruction[2])];
+                registerBank[register1Index] +
+                registerBank[register2Index];
     }
     private void subtract(int metadata, byte[] fullInstruction) {
         registerBank[metadata] =
