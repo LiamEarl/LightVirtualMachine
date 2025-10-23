@@ -2,6 +2,8 @@ package org.lightvm.machine.cpu;
 import org.lightvm.machine.Machine;
 import org.lightvm.utility.BinaryUtility;
 
+import javax.crypto.Mac;
+
 public class ProcessingCore extends Thread {
     private final int[] registerBank;
     private final Cache cache;
@@ -12,16 +14,38 @@ public class ProcessingCore extends Thread {
     private long tickCount = 0L;
 
     private static final int[] instructionByteSizes = new int[] {
-            3, // Code 0, Store Relative
-            3, // Code 1, Store Absolute
-            3, // Code 2, Load Relative
-            3, // Code 3, Load Absolute
-            2, // Code 4, Add
-            2, // Code 5, Subtract
-            2, // Code 6, Multiply
-            2, // Code 7, Divide
-            4, // Code 8, Branch
-            4, // Code 9, Conditional Branch
+            1, // Code 0, Idle
+            3, // Code 1 Store Relative
+            3, // Code 2, Store Absolute
+            3, // Code 3, Load Relative
+            3, // Code 4, Load Absolute
+            2, // Code 5, Add
+            2, // Code 6, Subtract
+            2, // Code 7, Multiply
+            2, // Code 8, Divide
+            2, // Code 9, and
+            2, // Code 10, or
+            2, // Code 11, not
+            4, // Code 12, Branch
+            5, // Code 13, set
+            // Code 14
+            1, //Code 15, Halt
+    };
+    private static final String[] opcodeNames = new String[]{
+        "Idle",
+        "Store Relative",
+        "Store Absolute",
+        "Load Relative",
+        "Load Absolute",
+        "Add",
+        "Subtract",
+        "Multiply",
+        "Divide",
+        "And",
+        "Or",
+        "Not",
+        "Branch",
+        "Set"
     };
 
     public ProcessingCore(int num64ByteCacheLines, int registerBankSize, int clockSpeedHertz) {
@@ -38,113 +62,147 @@ public class ProcessingCore extends Thread {
 
     @Override
     public void run() {
+        cache.initializeCacheLines();
         int millisDelay = 1000 / clockSpeedHertz;
         long start = System.currentTimeMillis();
         while(ticking) {
             tickCount ++;
-            long timePassed = System.currentTimeMillis() - start;
-            System.out.printf("Tick #: %d, Time Passed: %d seconds.\n", tickCount, timePassed /1000);
+//            long timePassed = System.currentTimeMillis() - start;
+            //System.out.printf("Tick #: %d, Time Passed: %d seconds.\n", tickCount, timePassed /1000);
 
-            try {
-                Thread.sleep(millisDelay);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+           // executeInstruction();
+
+//            try {
+//                Thread.sleep(millisDelay);
+//            } catch (InterruptedException e) {
+//                throw new RuntimeException(e);
+//            }
         }
     }
 
     private int getAssistingAddress(int targetAddress) {
         return BinaryUtility.getIntFromBytes(new byte[] {
-                cache.getByteAtAddress(targetAddress),
-                cache.getByteAtAddress(targetAddress + 1)
+                cache.getByteAtAddress(targetAddress + 1),
+                cache.getByteAtAddress(targetAddress)
         });
     }
 
-    private void executeInstruction(int curInstructionAddress) {
-        byte instructionRoot = cache.getByteAtAddress(curInstructionAddress);
-
-        int opcode =  (instructionRoot & 0xFF) >>> 3; // first 5 bits of first byte
-        int opMetadata = instructionRoot & 0x07; // last 3 bits of first byte
-
-        // Next two bytes into an integer
-
-
-        // Used a switch statement with sequential integers as this has o(1) lookup speed.
-        switch(opcode) {
-            // Store Relative: 0, 00000
-            // First five bits code
-            // Next three bits is the register to take the number from
-            // Next two bytes contains the offset from the program root potentialAddress that the number will be stored in
-            // Instruction Format: code(00000)r1(000)|relative potentialAddress(00000000|00000000)
-            case 0:
-                storeRelative(opMetadata, getAssistingAddress(curInstructionAddress + 1));
-                break;
-
-            // Store Absolute: 1, 00001
-            // First five bits code
-            // Next three bits is the register to take the number from
-            // Next two bytes contains the absolute potentialAddress that the number will be stored in
-            // Instruction Format: code(00000)r1(000)|potentialAddress(00000000|00000000)
-            case 1: storeAbsolute(opMetadata, getAssistingAddress(curInstructionAddress + 1)); break;
-
-            // Load Relative: 2, 00010
-            // First five bits code
-            // Next three bits is the register to load the number into
-            // Next two bytes contains the relative potentialAddress that the number will be taken from
-            // Instruction Format: code(00000)r1(000)|potentialAddress(00000000|00000000)
-            case 2: loadRelative(opMetadata, getAssistingAddress(curInstructionAddress + 1)); break;
-
-            // Load Absolute: 3, 00011
-            // First five bits code
-            // Next three bits is the register to load the number into
-            // Next two bytes contains the Absolute potentialAddress that the number will be taken from
-            // Instruction Format: code(00000)r1(000)|potentialAddress(00000000|00000000)
-            case 3: loadAbsolute(opMetadata, getAssistingAddress(curInstructionAddress + 1)); break;
-
-            // Add: 4, 00100
-            // First 5 bits code
-            // Next three bits is the register to store the value to
-            // Next 3 bits is the register containing the first number to add
-            // Next 3 bits is the register containing the second number to add
-            // Next 2 bits is wasted
-            // Instruction format: code(00000)r3(000)|r1(000)r2(000) Wasted bits:(00)
-            case 4:
-                byte nextInstructionByte = cache.getByteAtAddress(curInstructionAddress + 1);
-                int firstRegisterIndex = nextInstructionByte >>> 5;
-                int secondRegisterIndex = (nextInstructionByte & 0b00011100) >>> 2;
-                add(opMetadata, firstRegisterIndex, secondRegisterIndex);
-                break;
-//            case 5: subtract(opMetadata, fullInstruction); break; // Subtract: 5, 00101
-//            case 6: multiply(opMetadata, fullInstruction); break; // Multiply: 6, 00110
-//            case 7: divide(opMetadata, fullInstruction); break; // Divide: 7, 00111
-//            case 8: break;
-            case 9: break;
-            case 10: break;
-            case 11: break;
-            case 12: break;
-            case 13: break;
-            case 14: break;
-            case 15: break;
-            case 16: break;
-            case 17: break;
-            case 18: break;
-            case 19: break;
-            case 20: break;
-            case 21: break;
-            case 22: break;
-            case 23: break;
-            case 24: break;
-            case 25: break;
-            case 26: break;
-            case 27: break;
-            case 28: break;
-            case 29: break;
-            case 30: break;
-            case 31: break;
+//    private void executeInstruction() {
+//        byte instructionRoot = cache.getByteAtAddress(instructionAddress);
+//
+//        int opcode =  (instructionRoot & 0b11111111) >>> 4; // first 4 bits of first byte
+//        int opMetadata = (instructionRoot & 0b00001111); // last 4 bits of first byte
+//        byte nextInstructionByte = cache.getByteAtAddress(instructionAddress + 1);
+//
+//        System.out.println(instructionAddress + " " + opcode + " " + opcodeNames[opcode]);
+//
+//        // Used a switch statement with sequential integers as this has o(1) lookup speed.
+//        switch(opcode) {
+//            case 0: break; // Idle
+//
+//            // Store Relative: 1, 0000
+//            // First four bits code
+//            // Next four bits is the register to take the number from
+//            // Next two bytes contains the offset from the program root potentialAddress that the number will be stored in
+//            // Instruction Format: code(0000)r1(0000)|relative potentialAddress(00000000|00000000)
+//            case 1: storeRelative(opMetadata, getAssistingAddress(instructionAddress + 1)); break;
+//
+//            // Store Absolute: 2, 0001
+//            // First four bits code
+//            // Next four bits is the register to take the number from
+//            // Next two bytes contains the absolute potentialAddress that the number will be stored in
+//            // Instruction Format: code(0000)r1(0000)|potentialAddress(00000000|00000000)
+//            case 2: storeAbsolute(opMetadata, getAssistingAddress(instructionAddress + 1)); break;
+//
+//            // Load Relative: 2, 0010
+//            // First four bits code
+//            // Next four bits is the register to load the number into
+//            // Next two bytes contains the relative potentialAddress that the number will be taken from
+//            // Instruction Format: code(0000)r1(0000)|potentialAddress(00000000|00000000)
+//            case 3: loadRelative(opMetadata, getAssistingAddress(instructionAddress + 1)); break;
+//
+//            // Load Absolute: 3, 0011
+//            // First four bits code
+//            // Next four bits is the register to load the number into
+//            // Next two bytes contains the Absolute potentialAddress that the number will be taken from
+//            // Instruction Format: code(0000)r1(0000)|potentialAddress(00000000|00000000)
+//            case 4: loadAbsolute(opMetadata, getAssistingAddress(instructionAddress + 1)); break;
+//
+//            // Add: 4, 0100
+//            // First four bits code
+//            // Next four bits is the register to store the value to
+//            // Next four bits is the register containing the first number to add
+//            // Next four bits is the register containing the second number to add
+//            // Instruction format: code(0000)r3(0000)|r1(0000)r2(0000)
+//            case 5: add(opMetadata, (nextInstructionByte & 0xFF) >>> 4, nextInstructionByte & 0b00001111);break;
+//
+//            // Subtract: 5, 0101
+//            // First four bits code
+//            // Next four bits is the register to store the value to
+//            // Next four bits is the register containing the first number
+//            // Next four bits is the register containing the second number
+//            // Instruction format: code(0000)r3(0000)|r1(0000)r2(0000)
+//            case 6: subtract(opMetadata, (nextInstructionByte & 0xFF) >>> 4, nextInstructionByte & 0b00001111);break; // Subtract: 5, 00101
+//
+//            // Multiply: 6, 0110
+//            // First four bits code
+//            // Next four bits is the register to store the value to
+//            // Next four bits is the register containing the first number
+//            // Next four bits is the register containing the second number
+//            // Instruction format: code(0000)r3(0000)|r1(0000)r2(0000)
+//            case 7: multiply(opMetadata, (nextInstructionByte & 0xFF) >>> 4, nextInstructionByte & 0b00001111); break; // Multiply: 6, 00110
+//
+//            // Divide (integer division): 7, 0111
+//            // First four bits code
+//            // Next four bits is the register to store the value to
+//            // Next four bits is the register containing the first number
+//            // Next four bits is the register containing the second number
+//            // Instruction format: code(0000)r3(0000)|r1(0000)r2(0000)
+//            case 8: divide(opMetadata, (nextInstructionByte & 0xFF) >>> 4, nextInstructionByte & 0b00001111); break; // Divide: 7, 00111
+//
+//            case 9: and(opMetadata, (nextInstructionByte & 0xFF) >>> 4, nextInstructionByte & 0b00001111); break; // Divide: 7, 00111
+//
+//            case 10: or(opMetadata, (nextInstructionByte & 0xFF) >>> 4, nextInstructionByte & 0b00001111); break; // Divide: 7, 00111
+//
+//            case 11: not(opMetadata, (nextInstructionByte & 0xFF) >>> 4); break; // Divide: 7, 00111
+//
+//            // Branch: 8, 1000
+//            // First four bits code
+//            // Next four bits is the register to store the value to
+//            // Next four bits is the register containing the first number
+//            // Next four bits is the register containing the second number
+//            // Instruction format: code(0000)branchType(0000)|r1(0000)r2(0000)|addressToBranch(00000000|00000000)
+//            case 12: branch(opMetadata, (nextInstructionByte & 0xFF) >>> 4, nextInstructionByte & 0b00001111, getAssistingAddress(instructionAddress+2));break;
+//
+//            // Set: 9, 1001
+//            // First four bits code
+//            // Next four bits is the register to store the value to
+//            // Next four bytes is the literal integer to store
+//            // Instruction format: code(0000)register(0000)|numToStore(00000000|00000000|00000000|00000000)
+//            case 13: set(opMetadata, cache.getIntAtAddress(instructionAddress + 1)); break;
+//            case 14: break;
+//            case 15: halt(); break;
+//        }
+//
+//        if(opcode != 9) {
+//            instructionAddress += instructionByteSizes[opcode];
+//        }
+//    }
+    private void saveToExternal(int metadata, int memoryAddress, int externalAddress, int bytesToCopy) {
+        switch(metadata) {
+            case 0: // Write to output
+                for(int i = 0; i < bytesToCopy; i++) {
+                    //Machine.getInstance().getBusing().
+                }
+            case 1: break;
+            case 2: break;
+            case 3: break;
         }
     }
+    private void loadFromExternal(int metadata, int memoryAddress, int externalAddress, int bytesToCopy) {
 
-    private void storeAbsolute(int metadata, int absoluteAddress) {
+    }
+    private void storeMem(int metadata, int absoluteAddress) {
         int toStore = registerBank[metadata];
         Machine.getInstance().getBusing().setMemoryInteger(
                 absoluteAddress,
@@ -152,40 +210,72 @@ public class ProcessingCore extends Thread {
         );
         cache.setIntAtAddress(absoluteAddress, toStore);
     }
-    private void storeRelative(int metadata, int relativeAddress) {
-        storeAbsolute(metadata, programRootAddress + relativeAddress);
-    }
-    private void loadAbsolute(int metadata, int absoluteAddress) {
+    private void loadMem(int metadata, int absoluteAddress) {
         registerBank[metadata] = cache.getIntAtAddress(absoluteAddress);
-    }
-    private void loadRelative(int metadata, int relativeAddress) {
-        loadAbsolute(metadata, programRootAddress + relativeAddress);
     }
     private void add(int metadata, int register1Index, int register2Index) {
         registerBank[metadata] =
                 registerBank[register1Index] +
                 registerBank[register2Index];
     }
-    private void subtract(int metadata, byte[] fullInstruction) {
+    private void subtract(int metadata, int register1Index, int register2Index) {
         registerBank[metadata] =
-                registerBank[Byte.toUnsignedInt(fullInstruction[1])] -
-                        registerBank[Byte.toUnsignedInt(fullInstruction[2])];
+                registerBank[register1Index] -
+                        registerBank[register2Index];
     }
-    private void multiply(int metadata, byte[] fullInstruction) {
+    private void multiply(int metadata, int register1Index, int register2Index) {
         registerBank[metadata] =
-                registerBank[Byte.toUnsignedInt(fullInstruction[1])] *
-                        registerBank[Byte.toUnsignedInt(fullInstruction[2])];
+                registerBank[register1Index] *
+                        registerBank[register2Index];
     }
-    private void divide(int metadata, byte[] fullInstruction) {
+    private void divide(int metadata, int register1Index, int register2Index) {
         registerBank[metadata] =
-                registerBank[Byte.toUnsignedInt(fullInstruction[1])] /
-                        registerBank[Byte.toUnsignedInt(fullInstruction[2])];
+                registerBank[register1Index] /
+                        registerBank[register2Index];
     }
-    private void branch(int metadata, byte[] fullInstruction) {
-        int travelAddress = (Byte.toUnsignedInt(fullInstruction[1]) << 8) +
-                Byte.toUnsignedInt(fullInstruction[2]);
-        if(metadata == 0) travelAddress += programRootAddress;
-
-
+    private void and(int metadata, int register1Index, int register2Index) {
+        registerBank[metadata] = registerBank[register1Index] & registerBank[register2Index];
+    }
+    private void or(int metadata, int register1Index, int register2Index) {
+        registerBank[metadata] = registerBank[register1Index] | registerBank[register2Index];
+    }
+    private void not(int metadata, int registerIndex) {
+        registerBank[metadata] = ~registerBank[registerIndex];
+    }
+    private void branch(int metadata, int register1Index, int register2Index, int travelAddress) {
+        switch(metadata) {
+            case 0: instructionAddress = travelAddress; break;
+            case 1:
+                if(registerBank[register1Index] == registerBank[register2Index])
+                    instructionAddress = travelAddress;
+                break;
+            case 2:
+                if(registerBank[register1Index] > registerBank[register2Index])
+                    instructionAddress = travelAddress;
+                break;
+            case 3:
+                if(registerBank[register1Index] < registerBank[register2Index])
+                    instructionAddress = travelAddress;
+                break;
+            case 4: instructionAddress = programRootAddress + travelAddress; break;
+            case 5:
+                if(registerBank[register1Index] == registerBank[register2Index])
+                    instructionAddress = programRootAddress + travelAddress;
+                break;
+            case 6:
+                if(registerBank[register1Index] > registerBank[register2Index])
+                    instructionAddress = programRootAddress + travelAddress;
+                break;
+            case 7:
+                if(registerBank[register1Index] < registerBank[register2Index])
+                    instructionAddress = programRootAddress + travelAddress;
+                break;
+        }
+    }
+    private void set(int metadata, int numToSet) {
+        registerBank[metadata] = numToSet;
+    }
+    private void halt() {
+        ticking = false;
     }
 }

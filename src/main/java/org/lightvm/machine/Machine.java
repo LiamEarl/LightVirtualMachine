@@ -8,6 +8,8 @@ import org.lightvm.machine.io.Keyboard;
 import org.lightvm.machine.storage.RandomAccessMemory;
 import org.lightvm.machine.storage.SolidStateDrive;
 
+import javax.swing.*;
+
 /**
  * Machine class that represents a self-contained virtual machine.
  * Uses the Singleton design pattern as this project does not utilize multiple machines.
@@ -28,7 +30,7 @@ public class Machine {
        1hz clock speed (for testing) */
 
     @Getter
-    private static final Machine instance = new Machine(512, 16, 16, 1);
+    private static final Machine instance = new Machine(1024, 16, 16, 1);
 
     public Machine(int num64BytesRam, int num64ByteCacheLines, int registerBankSize, int cpuClockSpeed) {
 
@@ -37,6 +39,13 @@ public class Machine {
         processingCore = new ProcessingCore(num64ByteCacheLines, registerBankSize, cpuClockSpeed);
         keyboard = new Keyboard();
         display = new Display(256, 256);
+
+        JFrame frame = new JFrame("Pixel Window");
+        Display panel = new Display(400, 400);
+        frame.add(panel);
+        frame.setSize(400, 400);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setVisible(true);
 
         busing = new Busing.Builder()
                 .setRAM(randomAccessMemory)

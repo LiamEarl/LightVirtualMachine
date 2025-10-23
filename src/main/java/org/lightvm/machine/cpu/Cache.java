@@ -30,7 +30,15 @@ public class Cache {
         cacheLines = new byte[num64ByteLines][66];
         // instantiate lineAccessedOrder and put some initial values in ascending order
         lineAccessedOrder = new int[cacheLines.length];
-        for(int i = 0; i < lineAccessedOrder.length; i++) {lineAccessedOrder[i] = i;}
+        for(int i = 0; i < lineAccessedOrder.length; i++) {
+            lineAccessedOrder[i] = i;
+        }
+    }
+
+    public void initializeCacheLines() {
+        for(int i = 0; i < cacheLines.length; i++) {
+            fetchFromMemory(i*64);
+        }
     }
 
     private void updateAccessedOrder(int lineAccessed) {
@@ -53,8 +61,11 @@ public class Cache {
             int lineMemoryAddress = BinaryUtility.getIntFromBytes(
                     new byte[] {cacheLines[lineAccessedOrder[i]][64], cacheLines[lineAccessedOrder[i]][65]}
             );
+
             // Find the difference between the root of the block and the address you're searching for
-            int cacheDiff = address - (lineMemoryAddress * 64);
+            int cacheDiff = address - (lineMemoryAddress);
+
+            //System.out.println("Line Mem Address " + lineMemoryAddress + " Cache Diff: " + cacheDiff);
             // If the difference is between 0 and 63 then you know that you are accessing the right cache line
             if(cacheDiff >= 0 && cacheDiff < 64) {
                 // Make sure that the accessed order is up to date and send the data off
@@ -79,12 +90,13 @@ public class Cache {
 
     public byte getByteAtAddress(int addressToLoad) {
         int[] appropriateCacheLine = findCacheLine(addressToLoad);
-
-        if(appropriateCacheLine[0] != -1)
+        if(appropriateCacheLine[0] != -1) {
+            //System.out.println("Successfully accessed" + addressToLoad + ": At cache Line: " + appropriateCacheLine[0] + " Offset: " + appropriateCacheLine[1]);
             return cacheLines[appropriateCacheLine[0]][appropriateCacheLine[1]];
-
+        }
         //cache miss
         int lineOffset = fetchFromMemory(addressToLoad);
+        //System.out.println("Cache Miss At " + addressToLoad + ": New Cache Line: " + lineAccessedOrder[0] + " Offset: " + lineOffset);
 
         // Return the data initially requested.
         return cacheLines[lineAccessedOrder[0]][lineOffset];
@@ -139,14 +151,18 @@ public class Cache {
 
     public int getIntAtAddress(int addressToLoad) {
         int[] appropriateCacheLine = findCacheLine(addressToLoad);
+
+        if(appropriateCacheLine[1] > 60)
+            return getIntBetweenCacheLines(addressToLoad);
+
         int offset, cacheLineIndex;
 
-        if(appropriateCacheLine[0] != -1 && appropriateCacheLine[1] <= 60) {
-            cacheLineIndex = appropriateCacheLine[0];
-            offset = appropriateCacheLine[1];
-        }else {
+        if(appropriateCacheLine[0] == -1) {
             offset = fetchFromMemory(addressToLoad);
             cacheLineIndex = lineAccessedOrder[0];
+        }else {
+            cacheLineIndex = appropriateCacheLine[0];
+            offset = appropriateCacheLine[1];
         }
 
         return BinaryUtility.getIntFromBytes(new byte[] {
@@ -154,6 +170,15 @@ public class Cache {
                 cacheLines[cacheLineIndex][offset + 1],
                 cacheLines[cacheLineIndex][offset + 2],
                 cacheLines[cacheLineIndex][offset + 3],
+        });
+    }
+
+    private int getIntBetweenCacheLines(int addressToLoad) {
+        return BinaryUtility.getIntFromBytes(new byte[] {
+                getByteAtAddress(addressToLoad),
+                getByteAtAddress(addressToLoad+1),
+                getByteAtAddress(addressToLoad+2),
+                getByteAtAddress(addressToLoad+3),
         });
     }
 
