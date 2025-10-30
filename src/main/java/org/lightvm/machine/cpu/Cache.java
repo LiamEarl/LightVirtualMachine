@@ -122,30 +122,29 @@ public class Cache {
     public void setIntAtAddress(int addressToSet, int value) {
         int[] appropriateCacheLine = findCacheLine(addressToSet);
         int lineOffset = appropriateCacheLine[1];
-        if(appropriateCacheLine[0] != -1) {
-
-            if(appropriateCacheLine[1] > 60) {
-                int bytesBeyondCacheLine = 63 - appropriateCacheLine[1];
-                for(int i = 0; i < 4; i++) {
-                    byte currentByteOfInt = (byte) (value >>> ((3 - i) * 8));
-                    if(lineOffset + i <= 63) {
-                        // This byte is still within the cache line so write it to this line in cache
-                        cacheLines[appropriateCacheLine[0]][lineOffset + i] = currentByteOfInt;
-                        Machine.getInstance().getBusing().setMemoryByte(addressToSet + i, currentByteOfInt);
-                    }else {
-                        // This byte is no longer within the cache line so use our setByte method to handle it.
-                        setByteAtAddress(addressToSet + i, currentByteOfInt);
-                    }
+        if(appropriateCacheLine[0] == -1) {
+            System.out.println("Address to set was not loaded in cache. setIntAtAddress");
+        }
+        if(appropriateCacheLine[1] > 60) {
+            int bytesBeyondCacheLine = 63 - appropriateCacheLine[1];
+            for(int i = 0; i < 4; i++) {
+                byte currentByteOfInt = (byte) (value >>> ((3 - i) * 8));
+                if(lineOffset + i <= 63) {
+                    // This byte is still within the cache line so write it to this line in cache
+                    cacheLines[appropriateCacheLine[0]][lineOffset + i] = currentByteOfInt;
+                    Machine.getInstance().getBusing().setMemoryByte(addressToSet + i, currentByteOfInt);
+                }else {
+                    // This byte is no longer within the cache line so use our setByte method to handle it.
+                    setByteAtAddress(addressToSet + i, currentByteOfInt);
                 }
-                return;
             }
-            Machine.getInstance().getBusing().setMemoryInteger(addressToSet, value);
-            cacheLines[appropriateCacheLine[0]][lineOffset] = (byte) (value >>> 24);
-            cacheLines[appropriateCacheLine[0]][lineOffset + 1] = (byte) (value >>> 16);
-            cacheLines[appropriateCacheLine[0]][lineOffset + 2] = (byte) (value >>> 8);
-            cacheLines[appropriateCacheLine[0]][lineOffset + 3] = (byte) (value);
-
-        }else System.out.println("Address to set was not loaded in cache. setIntAtAddress");
+            return;
+        }
+        Machine.getInstance().getBusing().setMemoryInteger(addressToSet, value);
+        cacheLines[appropriateCacheLine[0]][lineOffset] = (byte) (value >>> 24);
+        cacheLines[appropriateCacheLine[0]][lineOffset + 1] = (byte) (value >>> 16);
+        cacheLines[appropriateCacheLine[0]][lineOffset + 2] = (byte) (value >>> 8);
+        cacheLines[appropriateCacheLine[0]][lineOffset + 3] = (byte) (value);
 
     }
 

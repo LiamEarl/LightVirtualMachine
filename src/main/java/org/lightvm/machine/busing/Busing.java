@@ -34,9 +34,34 @@ public class Busing {
         return ram.getIntAtAddress(address);
     }
 
-    public void transferDiskToMemory(int sourceDiskAddress, int destMemoryAddress, int numBytesToTransfer) {
+    public void transferMemoryToVMem(int memoryAddress, int vMemoryAddress, int numBytesToTransfer) {
         for(int i = 0; i < numBytesToTransfer; i++) {
-            ram.setByte(destMemoryAddress + i, ssd.getByte(sourceDiskAddress + i));
+            display.setPixel(vMemoryAddress + i, ram.getByte(memoryAddress + i));
+        }
+    }
+
+    public void transferDiskToMemory(int diskAddress, int memoryAddress, int numBytesToTransfer) {
+        for(int i = 0; i < numBytesToTransfer; i++) {
+            ram.setByte(memoryAddress + i, ssd.getByte(diskAddress + i));
+        }
+    }
+
+    public void transferMemoryToDisk(int diskAddress, int memoryAddress, int numBytesToTransfer) {
+        for(int i = 0; i < numBytesToTransfer; i++) {
+            ssd.setByte(memoryAddress + i, ram.getByte(diskAddress + i));
+        }
+    }
+
+    public void transferIntsMemToPrintQueue(int sourceMemAddress, int numInts) {
+        for(int i = 0; i < numInts; i++) {
+            display.addPrintQueue(getIntFromMemory(sourceMemAddress+(i*4)));
+            if(i != numInts - 1) display.addPrintQueue(',');
+        }
+    }
+
+    public void transferCharsMemToPrintQueue(int sourceMemAddress, int numChars) {
+        for(int i = 0; i < numChars; i++) {
+            display.addPrintQueue((char)ram.getByte(sourceMemAddress+i));
         }
     }
 
