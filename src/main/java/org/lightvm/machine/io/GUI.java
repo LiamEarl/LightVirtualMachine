@@ -2,14 +2,17 @@ package org.lightvm.machine.io;
 import lombok.Getter;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.image.BufferedImage;
+import java.util.Arrays;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class Display extends JPanel implements Runnable{
+public class GUI extends JPanel implements Runnable, KeyListener {
 
     /*
         Visual memory is made up of bytes where each byte is a color value.
@@ -22,27 +25,25 @@ public class Display extends JPanel implements Runnable{
     private final byte[] visualMemory;
 
     private final List<Character> printQueue = new CopyOnWriteArrayList<>();
+    private final List<Character> keyInputQueue = new CopyOnWriteArrayList<>();
     private final AtomicBoolean needsRepaint = new AtomicBoolean(true);
     private boolean displaying = true;
     private final int width;
     private final int height;
-    private final Map<Byte, Integer> byteRGBToIntRGBMap = new HashMap<>();
+    private final Map<Integer, Integer> byteRGBToIntRGBMap = new HashMap<>();
     private final BufferedImage img;
 
-    public Display(int displayWidth, int displayHeight) {
+    public GUI(int displayWidth, int displayHeight) {
         visualMemory = new byte[displayWidth * displayHeight];
 
-        for(int i = 0; i < visualMemory.length; i++) {
-            visualMemory[i] = (byte) (0b00100100);
-        }
+        Arrays.fill(visualMemory, (byte) 0);
 
         width = displayWidth;
         height = displayHeight;
         img = new BufferedImage(width*3, height*3, BufferedImage.TYPE_INT_RGB);
 
         for(int i = 0; i < 255; i++) {
-            byte byteVal = (byte) i;
-            byteRGBToIntRGBMap.put(byteVal, byteRGBtoIntRGB(byteVal));
+            byteRGBToIntRGBMap.put(i, byteRGBtoIntRGB(i));
         }
     }
 
@@ -62,6 +63,11 @@ public class Display extends JPanel implements Runnable{
         visualMemory[index] = colorValue;
     }
 
+    public byte getFirstChar() {
+        if(keyInputQueue.isEmpty()) return (byte) 0;
+        return (byte) keyInputQueue.removeFirst().charValue();
+    }
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -79,7 +85,9 @@ public class Display extends JPanel implements Runnable{
 
             for(Character c : printQueue) {
                 if(c == '~') System.out.println();
-                else System.out.print(c);
+                else {
+                    System.out.print(c);
+                }
                 printQueue.removeFirst();
             }
 
@@ -89,12 +97,13 @@ public class Display extends JPanel implements Runnable{
                 for (int x = 0; x < width; x++) {
                     int actualX = x * 3;
                     int actualY = y * 3;
+                    int col = byteRGBtoIntRGB(Byte.toUnsignedInt(visualMemory[(y * width) + x]));
                     for(int i = 0; i < 3; i++) {
                         for(int j = 0; j < 3; j++) {
                             img.setRGB(
                                     actualX + j,
                                     actualY + i,
-                                    byteRGBToIntRGBMap.get(visualMemory[(y * width) + x])
+                                    col
                             );
                         }
                     }
@@ -105,7 +114,7 @@ public class Display extends JPanel implements Runnable{
         }
     }
 
-    private int byteRGBtoIntRGB(byte rgb) {
+    private int byteRGBtoIntRGB(int rgb) {
         int unsigned = rgb & 0xFF;       // convert to unsigned
 
         int r = (unsigned >> 5) & 0b111;   // top 3 bits
@@ -118,4 +127,15 @@ public class Display extends JPanel implements Runnable{
 
         return (r << 16) | (g << 8) | b;
     }
+
+    @Override
+    public void keyTyped(KeyEvent e) {}
+
+    @Override
+    public void keyPressed(KeyEvent e) {
+        keyInputQueue.add(e.getKeyChar());
+    }
+
+    @Override
+    public void keyReleased(KeyEvent e) {}
 }

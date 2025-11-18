@@ -1,16 +1,13 @@
 package org.lightvm.machine.cpu;
 import org.lightvm.machine.Machine;
-import org.lightvm.machine.busing.Busing;
 import org.lightvm.utility.BinaryUtility;
-
-import javax.crypto.Mac;
 
 public class ProcessingCore extends Thread {
     private final int[] registerBankInts = new int[16];
 //    private final float[] registerBankFloats = new float[16];
 //    private final byte[] registerBankBytes = new byte[16];
 
-    private final Cache cache = new Cache(1024);
+    private final Cache cache = new Cache(16);
     private int programRootAddress = 0;
     private int instructionAddress;
     private int returnAddress = 0;
@@ -30,8 +27,8 @@ public class ProcessingCore extends Thread {
 
     @Override
     public void run() {
+        Machine.getInstance().getBusing().transferDiskToMemory(0,0,2000);
         cache.initializeCacheLines(); // Cant run this inside the constructor as this creates a catch 22 between the machine and cache
-
         while(ticking) {
             tickCount ++;
             executeInstruction();
@@ -41,7 +38,7 @@ public class ProcessingCore extends Thread {
     private int get2ByteNumAtAddress(int targetAddress) {
         return BinaryUtility.getIntFromBytes(new byte[] {
                 cache.getByteAtAddress(targetAddress),
-                cache.getByteAtAddress(targetAddress+1)
+                cache.getByteAtAddress(targetAddress + 1)
         });
     }
 
@@ -120,7 +117,29 @@ public class ProcessingCore extends Thread {
                         get2ByteNumAtAddress(instructionAddress + 5));
                 instructionAddress += 7;
                 break;
-            case 7:
+            case 7: // Write a register value to memory as a byte 1 byte opcode 1 byte reg 2 bytes mem address
+                cache.setByteAtAddress(programRootAddress + get2ByteNumAtAddress(instructionAddress + 2),
+                        (byte) registerBankInts[Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress + 1))]);
+                instructionAddress += 4;
+                break;
+            case 8: // Write a literal value to a register as a byte 1 byte opcode 1 byte reg 1 byte value
+                registerBankInts[Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress + 1))] = cache.getByteAtAddress(instructionAddress + 2);
+                instructionAddress += 3;
+                break;
+            case 9: // Write a literal value to memory as a byte 1 byte opcode 2 byte mem address 1 byte value
+                cache.setByteAtAddress(programRootAddress + get2ByteNumAtAddress(instructionAddress + 1), cache.getByteAtAddress(instructionAddress + 3));
+                instructionAddress += 4;
+                break;
+            case 10: // Write a literal value to memory as a byte 1 byte opcode 1 byte reg that will contain mem address 1 byte literal
+                cache.setByteAtAddress(programRootAddress + registerBankInts[Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress + 1))], cache.getByteAtAddress(instructionAddress + 2));
+                instructionAddress += 3;
+                break;
+            case 11: // Save rel mem to visual memory using registers as addresses 1 byte opcode 1 byte reg1 1 byte reg2 1 byte reg3
+                Machine.getInstance().getBusing().transferMemoryToVMem(
+                        programRootAddress + registerBankInts[Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress + 1))],
+                        registerBankInts[Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress + 2))],
+                        registerBankInts[Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress + 3))]);
+                instructionAddress += 4;
                 break;
         }
     }
@@ -132,6 +151,7 @@ public class ProcessingCore extends Thread {
                         Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress + 1))
                         ] = cache.getIntAtAddress(programRootAddress + get2ByteNumAtAddress(instructionAddress + 2));
                 instructionAddress += 4;
+                //System.out.println("LOADING INTO REG" + Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress + 1)) + " " + cache.getIntAtAddress(programRootAddress + get2ByteNumAtAddress(instructionAddress + 2)));
                 break;
             case 1: // Transfer disk to rel memory 1 byte opcode 2 byte mem address 2 byte disk address 2 byte numBytes
                 Machine.getInstance().getBusing().transferDiskToMemory(
@@ -140,8 +160,16 @@ public class ProcessingCore extends Thread {
                         get2ByteNumAtAddress(instructionAddress + 5));
                 instructionAddress += 7;
                 break;
-            case 2: break;
-            case 3: break;
+            case 2: // Transfer unprocessed inputted char to a location in memory 1 byte opcode 2 bytes mem address
+                Machine.getInstance().getBusing().loadMostRecentCharToMem(programRootAddress + get2ByteNumAtAddress(instructionAddress + 1));
+                instructionAddress += 3;
+                break;
+            case 3:
+                registerBankInts[
+                        Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress + 1))
+                        ] = Byte.toUnsignedInt(cache.getByteAtAddress(programRootAddress + get2ByteNumAtAddress(instructionAddress + 2)));
+                instructionAddress += 4;
+                break;
             case 4: break;
         }
     }
@@ -170,11 +198,10 @@ public class ProcessingCore extends Thread {
         registerBankInts[Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress + instructionOffset))] = opNumbers[1] / opNumbers[2];
         instructionAddress += instructionOffset + 1;
     }
-
     private void and(int metadata) {
         int[] opNumbers = getOperationNumbers(1, metadata);
         int instructionOffset = opNumbers[0];
-        registerBankInts[Byte.toUnsignedInt(cache.getByteAtAddress(instructionOffset))] = opNumbers[1] & opNumbers[2];
+        registerBankInts[Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress + instructionOffset))] = opNumbers[1] & opNumbers[2];
         instructionAddress += instructionOffset + 1;
     }
     private void or(int metadata) {
@@ -184,7 +211,7 @@ public class ProcessingCore extends Thread {
         instructionAddress += instructionOffset + 1;
     }
     private void not(int metadata) {
-        registerBankInts[metadata] = ~registerBankInts[Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress))];
+        registerBankInts[metadata] = ~registerBankInts[Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress + 1))];
         instructionAddress += 2;
     }
     private void branch(int metadata) {
@@ -192,41 +219,51 @@ public class ProcessingCore extends Thread {
         int firstBit = (metadata & (0b00001000)) >>> 3;
         metadata = metadata & 0b00000111; // remove first bit from metadata
 
-        int relOffset = (firstBit == 0) ? 0 : programRootAddress;
+        int relOffset = programRootAddress;
         int temp = instructionAddress;
         int potentialOffset = 0;
+        boolean failedBranch = true;
         switch(metadata) {
-            case 0: instructionAddress = programRootAddress + get2ByteNumAtAddress(instructionAddress + 1); break;
+            case 0:
+                instructionAddress = programRootAddress + get2ByteNumAtAddress(instructionAddress + 1);
+                failedBranch = false;
+                potentialOffset = 3;
+                break;
             case 1:
                 if(registerBankInts[Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress + 1))] ==
                         registerBankInts[Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress + 2))]) {
-                    instructionAddress = relOffset + get2ByteNumAtAddress(instructionAddress + 3);
-                }else {
-                    potentialOffset = 5;
+                    instructionAddress = relOffset + programRootAddress + get2ByteNumAtAddress(instructionAddress + 3);
+                    failedBranch = false;
                 }
+                potentialOffset = 5;
                 break;
             case 2:
                 if(registerBankInts[Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress + 1))] >
                         registerBankInts[Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress + 2))]) {
-                    instructionAddress = relOffset + get2ByteNumAtAddress(instructionAddress + 3);
-                }else {
-                    potentialOffset = 5;
+                    instructionAddress = relOffset + programRootAddress + get2ByteNumAtAddress(instructionAddress + 3);
+                    failedBranch = false;
                 }
+                potentialOffset = 5;
                 break;
             case 3:
                 if(registerBankInts[Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress + 1))] <
                         registerBankInts[Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress + 2))]) {
-                    instructionAddress = relOffset + get2ByteNumAtAddress(instructionAddress + 3);
-                }else {
-                    potentialOffset = 5;
+                    instructionAddress = relOffset + programRootAddress + get2ByteNumAtAddress(instructionAddress + 3);
+                    failedBranch = false;
                 }
+                potentialOffset = 5;
                 break;
             case 4:
                 instructionAddress = returnAddress;
+                failedBranch = false;
                 break;
         }
-        instructionAddress += potentialOffset;
-        if(potentialOffset == 0) returnAddress = temp + 1;
+
+        if(failedBranch) {
+            instructionAddress += potentialOffset;
+        }else if(firstBit == 1) {
+            returnAddress = temp + potentialOffset;
+        }
     }
 
     private void halt() {
@@ -272,5 +309,9 @@ public class ProcessingCore extends Thread {
         offset = secondNumResult[0];
 
         return new int[] {offset, firstNumResult[1], secondNumResult[1]};
+    }
+
+    public void snoopMemoryMutation(int address) {
+        cache.revalidateLine(address);
     }
 }

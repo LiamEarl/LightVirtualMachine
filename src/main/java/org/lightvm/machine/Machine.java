@@ -3,8 +3,7 @@ package org.lightvm.machine;
 import lombok.Getter;
 import org.lightvm.machine.busing.Busing;
 import org.lightvm.machine.cpu.ProcessingCore;
-import org.lightvm.machine.io.Display;
-import org.lightvm.machine.io.Keyboard;
+import org.lightvm.machine.io.GUI;
 import org.lightvm.machine.storage.RandomAccessMemory;
 import org.lightvm.machine.storage.SolidStateDrive;
 
@@ -18,8 +17,7 @@ public class Machine {
     private final ProcessingCore processingCore;
     private final RandomAccessMemory randomAccessMemory;
     private final SolidStateDrive solidStateDrive;
-    private final Keyboard keyboard;
-    private final Display display;
+    private final GUI gui;
     @Getter
     private final Busing busing;
 
@@ -36,23 +34,23 @@ public class Machine {
         solidStateDrive = new SolidStateDrive();
         randomAccessMemory = new RandomAccessMemory();
         processingCore = new ProcessingCore();
-        keyboard = new Keyboard();
 
         int displayWidth = 256, displayHeight = 256;
         JFrame frame = new JFrame("LearlOS");
-        display = new Display(displayWidth, displayHeight);
-        frame.add(display);
+        gui = new GUI(displayWidth, displayHeight);
+        frame.add(gui);
         frame.setSize(displayWidth*3, displayHeight*3);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setVisible(true);
-        Thread displayThread = new Thread(display);
+        frame.addKeyListener(gui);
+        Thread displayThread = new Thread(gui);
         displayThread.start();
 
-        busing = new Busing.Builder()
+        busing = new Busing.BusBuilder()
                 .setRAM(randomAccessMemory)
                 .setSSD(solidStateDrive)
-                .setKeyboard(keyboard)
-                .setDisplay(display)
+                .setDisplay(gui)
+                .setCPU(processingCore)
                 .build();
     }
 

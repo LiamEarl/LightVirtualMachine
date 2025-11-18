@@ -27,7 +27,7 @@ public class Cache {
 
     public Cache(int num64ByteLines) {
         numLines = num64ByteLines;
-        cacheLines = new byte[num64ByteLines][66];
+        cacheLines = new byte[num64ByteLines][67];
         // instantiate lineAccessedOrder and put some initial values in ascending order
         lineAccessedOrder = new int[cacheLines.length];
         for(int i = 0; i < lineAccessedOrder.length; i++) {
@@ -89,6 +89,7 @@ public class Cache {
     }
 
     public byte getByteAtAddress(int addressToLoad) {
+
         int[] appropriateCacheLine = findCacheLine(addressToLoad);
         if(appropriateCacheLine[0] != -1) {
             //System.out.println("Successfully accessed" + addressToLoad + ": At cache Line: " + appropriateCacheLine[0] + " Offset: " + appropriateCacheLine[1]);
@@ -98,7 +99,7 @@ public class Cache {
         int lineOffset = fetchFromMemory(addressToLoad);
         //System.out.println("Cache Miss At " + addressToLoad + ": New Cache Line: " + lineAccessedOrder[0] + " Offset: " + lineOffset);
 
-        // Return the data initially requested.
+
         return cacheLines[lineAccessedOrder[0]][lineOffset];
     }
 
@@ -123,10 +124,11 @@ public class Cache {
         int[] appropriateCacheLine = findCacheLine(addressToSet);
         int lineOffset = appropriateCacheLine[1];
         if(appropriateCacheLine[0] == -1) {
-            System.out.println("Address to set was not loaded in cache. setIntAtAddress");
+            lineOffset = fetchFromMemory(addressToSet);
+            appropriateCacheLine[1] = lineOffset;
+            appropriateCacheLine[0] = lineAccessedOrder[0];
         }
-        if(appropriateCacheLine[1] > 60) {
-            int bytesBeyondCacheLine = 63 - appropriateCacheLine[1];
+        if(lineOffset > 60) {
             for(int i = 0; i < 4; i++) {
                 byte currentByteOfInt = (byte) (value >>> ((3 - i) * 8));
                 if(lineOffset + i <= 63) {
@@ -186,7 +188,7 @@ public class Cache {
     }
 
     public void replaceLine(int lineToReplace, byte[] data, short chunkNumber) {
-        cacheLines[lineToReplace] = Arrays.copyOf(data, 66);
+        cacheLines[lineToReplace] = Arrays.copyOf(data, 67);
 
         byte mostSignificantByte = (byte) ((chunkNumber >>> 8) & 0xFF);
         byte leastSignificantByte = (byte) (chunkNumber & 0xFF);
@@ -195,5 +197,19 @@ public class Cache {
         cacheLines[lineToReplace][65] = leastSignificantByte;
 
         updateAccessedOrder(lineToReplace);
+    }
+
+    public void revalidateLine(int memAddress) {
+        int[] line = findCacheLine(memAddress);
+        if(line[0] == -1) return; // it's not saved in cache anyways so no need to invalidate a line
+        // Get the block of memory that maps to the address
+        byte[] newLine = Machine.getInstance().getBusing().getMemoryBlock(memAddress);
+        // Find where that address sits on that block
+        int lineOffset = memAddress % 64;
+        // Find the root address of the block of memory that you're pulling
+        short newLineAddress = (short) (memAddress - lineOffset);
+        // Take the line of cache that is the most stale (last accessed) and replace it with that block
+        replaceLine(line[0], newLine, newLineAddress);
+        cacheLines[line[0]][66] = 0;
     }
 }

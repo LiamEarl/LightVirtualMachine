@@ -1,0 +1,28 @@
+save l r 12 50
+save l r 13 50
+save l r 14 50
+save l r 15 50
+save l r 0 0
+flag game_loop
+branch u draw_rect ^
+
+branch u game_loop
+flag draw_rect
+save l r 11 5001
+save l r 10 5001
+add r r 10 14 10
+flag fill_memory_draw_rect
+save l m b r 11 255
+add r l 11 1 11
+branch c l 11 10 fill_memory_draw_rect
+save l r 11 5001
+save r m 13 5257
+load m r 9 5257
+add r r 9 15 9
+flag fill_pixels_draw_rect
+multiply r l 13 256 8
+add r r 8 12 8
+save m v r 11 8 14
+add r l 13 1 13
+branch c l 13 9 fill_pixels_draw_rect
+branch r
