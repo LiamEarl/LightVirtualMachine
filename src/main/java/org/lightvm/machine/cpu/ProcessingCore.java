@@ -31,6 +31,7 @@ public class ProcessingCore extends Thread {
         cache.initializeCacheLines(); // Cant run this inside the constructor as this creates a catch 22 between the machine and cache
         while(ticking) {
             tickCount ++;
+            //System.out.println(instructionAddress + "  " + returnAddress);
             executeInstruction();
         }
     }
@@ -140,6 +141,10 @@ public class ProcessingCore extends Thread {
                         registerBankInts[Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress + 2))],
                         registerBankInts[Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress + 3))]);
                 instructionAddress += 4;
+                break;
+            case 12: // wipe display 1 byte opcode
+                Machine.getInstance().getBusing().wipeDisplay();
+                instructionAddress += 1;
                 break;
         }
     }

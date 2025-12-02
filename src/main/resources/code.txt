@@ -1,12 +1,53 @@
-save l r 12 50
-save l r 13 50
-save l r 14 50
-save l r 15 50
-save l r 0 0
+save l m 4000 5
+save l m 4004 96
+save l m 4008 6
+save l m 4012 64
+
+save l m 3995 0
+save l m 3991 0
+
+save l m 3500 125
+save l m 3504 125
+save l m 3508 6
+save l m 3512 6
+
+save l m 3600 -1
+save l m 3604 0
+
 flag game_loop
+load m r 12 3995
+save l r 13 100
+branch c g 12 13 wipe_screen_sometimes ^
+add l r 1 12 12
+save r m 12 3995
+
+load m r 12 3991
+save l r 13 200000
+branch c g 12 13 move_ball ^
+add l r 1 12 12
+save r m 12 3991
+
+load k m 5000
+load m r b 0 5000
+save l r 1 119
+save l r 2 115
+branch c e 0 1 handle_up_arrow ^
+branch c e 0 2 handle_down_arrow ^
+
+load m r 12 4000
+load m r 13 4004
+load m r 14 4008
+load m r 15 4012
+branch u draw_rect ^
+
+load m r 12 3500
+load m r 13 3504
+load m r 14 3508
+load m r 15 3512
 branch u draw_rect ^
 
 branch u game_loop
+
 flag draw_rect
 save l r 11 5001
 save l r 10 5001
@@ -25,4 +66,40 @@ add r r 8 12 8
 save m v r 11 8 14
 add r l 13 1 13
 branch c l 13 9 fill_pixels_draw_rect
+branch r
+
+flag handle_up_arrow
+load m r 0 4004
+save l r 6 3
+branch c l 0 6 return
+add l r -3 0 0
+save r m 0 4004
+branch r
+
+flag handle_down_arrow
+load m r 0 4004
+save l r 6 178
+branch c g 0 6 return
+add l r 3 0 0
+save r m 0 4004
+branch r
+
+flag move_ball
+load m r 3 3600
+load m r 4 3604
+load m r 5 3500
+load m r 6 3504
+save l r 7 10
+branch c l 5 7 return
+add r r 3 5 5
+add r r 4 6 6
+save r m 5 3500
+save r m 6 3504
+branch r
+
+flag wipe_screen_sometimes
+save w
+save l r 12 -2
+flag return
+save l m 20000 1
 branch r

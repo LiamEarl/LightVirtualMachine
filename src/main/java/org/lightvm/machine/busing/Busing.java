@@ -5,6 +5,8 @@ import org.lightvm.machine.io.GUI;
 import org.lightvm.machine.storage.RandomAccessMemory;
 import org.lightvm.machine.storage.SolidStateDrive;
 
+import java.util.Random;
+
 public class Busing {
     private final RandomAccessMemory ram;
     private final SolidStateDrive ssd;
@@ -68,6 +70,10 @@ public class Busing {
     public void loadMostRecentCharToMem(int memoryAddress) {
         ram.setByte(memoryAddress, gui.getFirstChar());
         cpu.snoopMemoryMutation(memoryAddress);
+    }
+
+    public void wipeDisplay() {
+        gui.wipeScreen();
     }
 
     public static class BusBuilder {
