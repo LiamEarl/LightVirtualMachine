@@ -33,6 +33,7 @@ public class Compiler {
             }
         } catch (Exception e) {
             System.err.println("Error reading the file: " + e.getMessage());
+            System.out.println(byteCode.getLast());
         }
 
         StringBuilder completeCode = new StringBuilder();
@@ -150,7 +151,7 @@ public class Compiler {
                             saveCommand.append("00010011\n");
                             saveCommand.append(intToBinaryString(Integer.parseInt(separatedLine[3]), 2));
                             saveCommand.append(intToBinaryString(Integer.parseInt(separatedLine[4]), 2));
-                            saveCommand.append(intToBinaryString(Integer.parseInt(separatedLine[4]), 2));
+                            saveCommand.append(intToBinaryString(Integer.parseInt(separatedLine[5]), 2));
                             instructionPointer += 7;
                         }
                     }
@@ -203,7 +204,7 @@ public class Compiler {
             loadCommand.append("00100001\n");
             loadCommand.append(intToBinaryString(Integer.parseInt(separatedLine[3]), 2));
             loadCommand.append(intToBinaryString(Integer.parseInt(separatedLine[4]), 2));
-            loadCommand.append(intToBinaryString(Integer.parseInt(separatedLine[4]), 2));
+            loadCommand.append(intToBinaryString(Integer.parseInt(separatedLine[5]), 2));
             instructionPointer += 7;
         }else if(separatedLine[1].equals("k") && separatedLine[2].equals("m")) { // load k m 5201
             loadCommand.append("00100010\n");

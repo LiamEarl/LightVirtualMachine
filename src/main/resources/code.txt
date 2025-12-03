@@ -1,20 +1,43 @@
-save l m 4000 5
+save l m 2500 150
+
+flag start_program
+
+save l m 4000 3
 save l m 4004 96
-save l m 4008 6
+save l m 4008 4
 save l m 4012 64
 
 save l m 3995 0
 save l m 3991 0
+save l m 3987 0
 
-save l m 3500 125
-save l m 3504 125
+save l m 3516 246
+save l m 3520 96
+save l m 3524 4
+save l m 3528 64
+
+save l m 3500 200
+
+save l m 3600 -2
+save l m 3604 -3
+
+branch u scramble_seed ^
+load m r 0 2500
+save r m 0 3504
+
 save l m 3508 6
 save l m 3512 6
 
-save l m 3600 -1
-save l m 3604 0
+save l m 3550 -1
 
 flag game_loop
+load m r 12 3550
+save l r 13 0
+add r l 12 -1 12
+save r m 12 3550
+branch c g 12 13 game_loop
+branch c e 12 13 start_program
+
 load m r 12 3995
 save l r 13 100
 branch c g 12 13 wipe_screen_sometimes ^
@@ -22,10 +45,16 @@ add l r 1 12 12
 save r m 12 3995
 
 load m r 12 3991
-save l r 13 200000
-branch c g 12 13 move_ball ^
+save l r 13 500
 add l r 1 12 12
+branch c g 12 13 move_ball ^
 save r m 12 3991
+
+load m r 12 3987
+save l r 13 483
+add l r 1 12 12
+branch c g 12 13 handle_computer ^
+save r m 12 3987
 
 load k m 5000
 load m r b 0 5000
@@ -44,6 +73,12 @@ load m r 12 3500
 load m r 13 3504
 load m r 14 3508
 load m r 15 3512
+branch u draw_rect ^
+
+load m r 12 3516
+load m r 13 3520
+load m r 14 3524
+load m r 15 3528
 branch u draw_rect ^
 
 branch u game_loop
@@ -78,10 +113,88 @@ branch r
 
 flag handle_down_arrow
 load m r 0 4004
-save l r 6 178
+save l r 6 190
 branch c g 0 6 return
 add l r 3 0 0
 save r m 0 4004
+branch r
+
+flag move_computer_up
+save l r 7 2
+branch c l 11 7 return
+add r l 11 -2 11
+branch r
+
+flag move_computer_down
+save l r 7 189
+branch c g 11 7 return
+add r l 11 2 11
+branch r
+
+flag align_computer_ball
+add r l 11 32 9
+add r l 10 3 8
+branch c g 8 9 move_computer_down ^
+branch c l 8 9 move_computer_up ^
+branch r
+
+flag move_computer_center
+add r l 11 32 9
+branch c g 9 5 move_computer_up ^
+branch c l 9 5 move_computer_down ^
+branch r
+
+flag handle_computer
+load m r 11 3520
+load m r 10 3504
+load m r 6 3500
+save l r 5 128
+branch c g 6 5 align_computer_ball ^
+branch c l 6 5 move_computer_center ^
+save r m 11 3520
+save l r 12 0
+branch r
+
+flag computer_won
+load d m 6280 4280 1280
+save m v 6280 32256 1280
+save l m 3550 10000000
+branch u game_loop
+
+flag player_won
+load d m 5000 3000 1280
+save m v 5000 32256 1280
+save l m 3550 10000000
+branch u game_loop
+
+flag invert_ball_dxl
+load m r 10 4004
+add r l 10 64 9
+add r l 6 6 8
+branch c g 6 9 computer_won
+branch c l 8 10 computer_won
+save l r 3 2
+save l r 5 7
+branch r
+
+flag invert_ball_dxg
+load m r 10 3520
+add r l 10 64 9
+add r l 6 6 8
+branch c g 6 9 player_won
+branch c l 8 10 player_won
+save l r 3 -2
+save l r 5 242
+branch r
+
+flag invert_ball_dyl
+save l r 4 3
+save l r 6 4
+branch r
+
+flag invert_ball_dyg
+save l r 4 -3
+save l r 6 247
 branch r
 
 flag move_ball
@@ -89,17 +202,47 @@ load m r 3 3600
 load m r 4 3604
 load m r 5 3500
 load m r 6 3504
-save l r 7 10
-branch c l 5 7 return
+
+save l r 7 7
+branch c l 5 7 invert_ball_dxl ^
+save l r 7 242
+branch c g 5 7 invert_ball_dxg ^
+
+save l r 7 4
+branch c l 6 7 invert_ball_dyl ^
+save l r 7 247
+branch c g 6 7 invert_ball_dyg ^
+
 add r r 3 5 5
 add r r 4 6 6
+save r m 3 3600
+save r m 4 3604
 save r m 5 3500
 save r m 6 3504
+save l r 12 0
 branch r
 
 flag wipe_screen_sometimes
 save w
-save l r 12 -2
+save l r 12 0
 flag return
 save l m 20000 1
 branch r
+
+flag scramble_seed
+load m r 0 2500
+multiply r l 0 73 0
+add r l 0 151 0
+flag repeatedly_subtract
+save l r 1 256
+branch c g 0 1 subtract_seed
+branch c e 0 1 subtract_seed
+save r m 0 2500
+branch r
+flag subtract_seed
+add r l 0 -256 0
+load m r 2 3604
+multiply r l 2 -1 2
+save r m 2 3604
+branch u repeatedly_subtract
+
