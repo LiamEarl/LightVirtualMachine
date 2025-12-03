@@ -33,6 +33,7 @@ public class Compiler {
             }
         } catch (Exception e) {
             System.err.println("Error reading the file: " + e.getMessage());
+            System.out.println(byteCode.getLast());
         }
 
         StringBuilder completeCode = new StringBuilder();
@@ -40,7 +41,7 @@ public class Compiler {
         offsetInstructionFlags(byteCode, pointerAtEachLine);
         for(int i = 0; i < byteCode.size(); i++) {
 
-            //completeCode.append(originalLines.get(i).split(" ")[0]).append(" Pointer: ").append(pointerAtEachLine.get(i)).append("\n");
+            //completeCode.append(originalLines.get(i).toString()).append(" Pointer: ").append(pointerAtEachLine.get(i)).append("   ");
             if(byteCode.get(i).startsWith("branch")) { // it's a branch
                 byteCode.set(i, parseBranch(byteCode.get(i).split(" ")));
             }
@@ -150,7 +151,7 @@ public class Compiler {
                             saveCommand.append("00010011\n");
                             saveCommand.append(intToBinaryString(Integer.parseInt(separatedLine[3]), 2));
                             saveCommand.append(intToBinaryString(Integer.parseInt(separatedLine[4]), 2));
-                            saveCommand.append(intToBinaryString(Integer.parseInt(separatedLine[4]), 2));
+                            saveCommand.append(intToBinaryString(Integer.parseInt(separatedLine[5]), 2));
                             instructionPointer += 7;
                         }
                     }
@@ -175,6 +176,9 @@ public class Compiler {
                         instructionPointer += 7;
                     }
                 }
+            } case "w" -> {
+                saveCommand.append("00011100\n");
+                instructionPointer += 1;
             }
         }
         if(saveCommand.toString().isBlank()) throw new Exception("Something went wrong parsing save at address: " + instructionPointer);
@@ -200,7 +204,7 @@ public class Compiler {
             loadCommand.append("00100001\n");
             loadCommand.append(intToBinaryString(Integer.parseInt(separatedLine[3]), 2));
             loadCommand.append(intToBinaryString(Integer.parseInt(separatedLine[4]), 2));
-            loadCommand.append(intToBinaryString(Integer.parseInt(separatedLine[4]), 2));
+            loadCommand.append(intToBinaryString(Integer.parseInt(separatedLine[5]), 2));
             instructionPointer += 7;
         }else if(separatedLine[1].equals("k") && separatedLine[2].equals("m")) { // load k m 5201
             loadCommand.append("00100010\n");
@@ -225,7 +229,7 @@ public class Compiler {
                 String flagName = entry.getKey();
                 Integer pointerAtFlag = entry.getValue();
                 if(pointerAtEachLine.get(i) > pointerAtFlag) {
-                    System.out.println(splitL[0] + " " + splitL[1] + " pointer branch: " + pointerAtEachLine.get(i) + " pointer flag " + pointerAtFlag + " no offset.");
+                    System.out.println(splitL[0] + " " + splitL[1] + " pointer branch: " + pointerAtEachLine.get(i) + " pointer flag " + pointerAtFlag + ". Flag " + flagName + " no offset.");
                     continue;
                 }
                 System.out.println(splitL[0] + " " + splitL[1] + " pointer branch: " + pointerAtEachLine.get(i) + " pointer flag " + pointerAtFlag + ". Offsetting flag " + flagName + " by " + offsetsBranchType.get(splitL[1]) + " bytes.");
@@ -354,5 +358,4 @@ public class Compiler {
         writer.flush();
         fileWriter.close();
     }
-
 }

@@ -2,6 +2,8 @@ package org.lightvm.machine.cpu;
 import org.lightvm.machine.Machine;
 import org.lightvm.utility.BinaryUtility;
 
+import java.util.Stack;
+
 public class ProcessingCore extends Thread {
     private final int[] registerBankInts = new int[16];
 //    private final float[] registerBankFloats = new float[16];
@@ -10,7 +12,7 @@ public class ProcessingCore extends Thread {
     private final Cache cache = new Cache(16);
     private int programRootAddress = 0;
     private int instructionAddress;
-    private int returnAddress = 0;
+    private Stack<Integer> returnAddress = new Stack<>();
     private boolean ticking = false;
     private long tickCount = 0L;
 
@@ -31,6 +33,7 @@ public class ProcessingCore extends Thread {
         cache.initializeCacheLines(); // Cant run this inside the constructor as this creates a catch 22 between the machine and cache
         while(ticking) {
             tickCount ++;
+            //System.out.println(instructionAddress + "  " + returnAddress);
             executeInstruction();
         }
     }
@@ -140,6 +143,10 @@ public class ProcessingCore extends Thread {
                         registerBankInts[Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress + 2))],
                         registerBankInts[Byte.toUnsignedInt(cache.getByteAtAddress(instructionAddress + 3))]);
                 instructionAddress += 4;
+                break;
+            case 12: // wipe display 1 byte opcode
+                Machine.getInstance().getBusing().wipeDisplay();
+                instructionAddress += 1;
                 break;
         }
     }
@@ -254,7 +261,7 @@ public class ProcessingCore extends Thread {
                 potentialOffset = 5;
                 break;
             case 4:
-                instructionAddress = returnAddress;
+                instructionAddress = returnAddress.pop();
                 failedBranch = false;
                 break;
         }
@@ -262,7 +269,7 @@ public class ProcessingCore extends Thread {
         if(failedBranch) {
             instructionAddress += potentialOffset;
         }else if(firstBit == 1) {
-            returnAddress = temp + potentialOffset;
+            returnAddress.push(temp + potentialOffset);
         }
     }
 

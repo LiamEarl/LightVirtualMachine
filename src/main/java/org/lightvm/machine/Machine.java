@@ -39,7 +39,7 @@ public class Machine {
         JFrame frame = new JFrame("LearlOS");
         gui = new GUI(displayWidth, displayHeight);
         frame.add(gui);
-        frame.setSize(displayWidth*3, displayHeight*3);
+        frame.setSize(displayWidth*3, (displayHeight*3)+38);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setVisible(true);
         frame.addKeyListener(gui);

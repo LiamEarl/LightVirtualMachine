@@ -58,6 +58,10 @@ public class GUI extends JPanel implements Runnable, KeyListener {
         }
     }
 
+    public void wipeScreen() {
+        Arrays.fill(visualMemory, (byte) 0);
+    }
+
     public void setPixel(int index, byte colorValue) {
         needsRepaint.set(true);
         visualMemory[index] = colorValue;
