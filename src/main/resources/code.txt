@@ -234,13 +234,14 @@ load m r 0 2500
 multiply r l 0 73 0
 add r l 0 151 0
 flag repeatedly_subtract
-save l r 1 256
+save l r 1 230
 branch c g 0 1 subtract_seed
 branch c e 0 1 subtract_seed
+add r l 0 10 0
 save r m 0 2500
 branch r
 flag subtract_seed
-add r l 0 -256 0
+add r l 0 -230 0
 load m r 2 3604
 multiply r l 2 -1 2
 save r m 2 3604
