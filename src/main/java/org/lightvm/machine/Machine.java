@@ -3,8 +3,7 @@ package org.lightvm.machine;
 import lombok.Getter;
 import org.lightvm.machine.busing.Busing;
 import org.lightvm.machine.cpu.ProcessingCore;
-import org.lightvm.machine.io.Display;
-import org.lightvm.machine.io.Keyboard;
+import org.lightvm.machine.io.GUI;
 import org.lightvm.machine.storage.RandomAccessMemory;
 import org.lightvm.machine.storage.SolidStateDrive;
 
@@ -18,40 +17,40 @@ public class Machine {
     private final ProcessingCore processingCore;
     private final RandomAccessMemory randomAccessMemory;
     private final SolidStateDrive solidStateDrive;
-    private final Keyboard keyboard;
-    private final Display display;
+    private final GUI gui;
     @Getter
     private final Busing busing;
 
-    /* 32768 bytes (32.7kb) of ram, and 32768 bytes of disk (32.7kb) one short can represent all of these addresses.
+    /* 65536 bytes (65.5kb) of ram, and 65536 bytes of disk (65.5kb) one short can represent all of these addresses.
        Shorts can represent a value from 0 to 65535, resulting in 65536 combinations
        16 lines of cache each containing 64 bytes meaning 1024 bytes (1kb) of cache.
        16 register slots
        1hz clock speed (for testing) */
 
     @Getter
-    private static final Machine instance = new Machine(1024, 16, 16, 1);
+    private static final Machine instance = new Machine();
 
-    public Machine(int num64BytesRam, int num64ByteCacheLines, int registerBankSize, int cpuClockSpeed) {
-
+    public Machine() {
         solidStateDrive = new SolidStateDrive();
-        randomAccessMemory = new RandomAccessMemory(num64BytesRam);
-        processingCore = new ProcessingCore(num64ByteCacheLines, registerBankSize, cpuClockSpeed);
-        keyboard = new Keyboard();
-        display = new Display(256, 256);
+        randomAccessMemory = new RandomAccessMemory();
+        processingCore = new ProcessingCore();
 
-        JFrame frame = new JFrame("Pixel Window");
-        Display panel = new Display(400, 400);
-        frame.add(panel);
-        frame.setSize(400, 400);
+        int displayWidth = 256, displayHeight = 256;
+        JFrame frame = new JFrame("LearlOS");
+        gui = new GUI(displayWidth, displayHeight);
+        frame.add(gui);
+        frame.setSize(displayWidth*3, displayHeight*3);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setVisible(true);
+        frame.addKeyListener(gui);
+        Thread displayThread = new Thread(gui);
+        displayThread.start();
 
-        busing = new Busing.Builder()
+        busing = new Busing.BusBuilder()
                 .setRAM(randomAccessMemory)
                 .setSSD(solidStateDrive)
-                .setKeyboard(keyboard)
-                .setDisplay(display)
+                .setDisplay(gui)
+                .setCPU(processingCore)
                 .build();
     }
 
